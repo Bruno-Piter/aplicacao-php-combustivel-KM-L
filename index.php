@@ -1,43 +1,19 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Calculo de Consumo de Combustível</title>
-	<link rel="stylesheet" type="text/css" href="css/style.css">
-</head>
-<body>
-	<main>
-		<div class="painel">
-			<h2>Instruções</h2>
-			<div class="conteudo-painel">
-				<p>Esta aplicação tem como finalidade demonstrar os valores que
-					serão gastos com combustível durante uma viagem, com base no
-				consumo do veículo, e com a distância determinada.</p>
-				<p>Combustíveis:</p>
-				<ul>
-					<li><b>Álcool</b></li>
-					<li><b>Díesel</b></li>
-					<li><b>Gasolina</b></li>
-				</ul>
-			</div>
-		</div>
-
-		<div class="painel">
-			<h2>Cálculo do valor (R$) do consumo</h2>
-			<div class="conteudo-painel">
-				<form action="calculo.php" method="POST">
-					<label for="distancia">Distância em KM a ser percorrida</label>
-					<input type="number" class="campoTexto"  name="distancia" required/>
-
-					<label for="autonomia">Consumo de combustível do veículo (KM/L)</label>
-					<input type="number" class="campoTexto" name="autonomia" required/>
-
-					<button class="botao" type="submit">Calcular</button>
-				</form>
-			</div>
-		</div>
-
-	</main>
-</body>
-</html>
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/src/FuelCalculator.php';
+$prices = ['gasolina' => 5.95, 'etanol' => 3.98, 'diesel' => 5.04];
+$labels = ['gasolina' => 'Gasolina', 'etanol' => 'Etanol', 'diesel' => 'Diesel'];
+$errors = []; $results = null; $distance = ''; $efficiencies = ['gasolina' => '', 'etanol' => '', 'diesel' => ''];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $distance = trim((string)($_POST['distance'] ?? ''));
+    foreach ($efficiencies as $fuel => $_) { $efficiencies[$fuel] = trim((string)($_POST["efficiency_$fuel"] ?? '')); }
+    $distanceValue = filter_var($distance, FILTER_VALIDATE_FLOAT);
+    if ($distanceValue === false || $distanceValue <= 0) { $errors['distance'] = 'Informe uma distância maior que zero.'; }
+    $numericEfficiencies = [];
+    foreach ($efficiencies as $fuel => $value) { $parsed = filter_var($value, FILTER_VALIDATE_FLOAT); if ($parsed === false || $parsed <= 0) { $errors["efficiency_$fuel"] = 'Informe um consumo em KM/L maior que zero.'; } else { $numericEfficiencies[$fuel] = $parsed; } }
+    if (!$errors) { $results = FuelCalculator::calculate((float)$distanceValue, $numericEfficiencies, $prices); }
+}
+function value(string $value): string { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
+function money(float $value): string { return 'R$ ' . number_format($value, 2, ',', '.'); }
+?>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Compare o custo estimado da sua viagem por combustível."><title>Rota Certa | Comparador de combustível</title><link rel="stylesheet" href="css/style.css"></head><body><main class="shell"><header><p class="eyebrow">PLANEJAMENTO DE VIAGEM</p><h1>Quanto custa a sua <em>rota?</em></h1><p class="lead">Compare os custos usando o consumo real do seu veículo para cada combustível.</p></header><section class="calculator" aria-labelledby="calculator-title"><div class="form-panel"><h2 id="calculator-title">Dados da viagem</h2><p class="helper">Os preços são estimativas. Atualize-os no código conforme a sua região.</p><form method="post" novalidate><label for="distance">Distância da viagem <span>em quilômetros</span></label><input id="distance" name="distance" type="number" min="0.1" step="0.1" inputmode="decimal" value="<?= value($distance) ?>" aria-describedby="distance-error" required><?php if (isset($errors['distance'])): ?><p class="field-error" id="distance-error"><?= $errors['distance'] ?></p><?php endif; ?><fieldset><legend>Consumo do veículo <span>em KM/L</span></legend><?php foreach ($labels as $fuel => $label): ?><label for="efficiency_<?= $fuel ?>"><?= $label ?></label><div class="input-with-unit"><input id="efficiency_<?= $fuel ?>" name="efficiency_<?= $fuel ?>" type="number" min="0.1" step="0.1" inputmode="decimal" value="<?= value($efficiencies[$fuel]) ?>" aria-describedby="<?= $fuel ?>-error" required><span>km/L</span></div><?php if (isset($errors["efficiency_$fuel"])): ?><p class="field-error" id="<?= $fuel ?>-error"><?= $errors["efficiency_$fuel"] ?></p><?php endif; ?><?php endforeach; ?></fieldset><button type="submit">Comparar custos <span aria-hidden="true">→</span></button></form></div><aside class="tips"><p class="eyebrow">COMO CALCULAMOS</p><h2>Consumo real, escolha melhor.</h2><p>Para cada combustível: distância ÷ consumo = litros. Depois, litros × preço = custo estimado.</p><ul><li>Consumos separados por combustível</li><li>Comparação ordenada pelo menor custo</li><li>Valores transparentes de litros e preço</li></ul></aside></section><?php if ($results): $cheapest = array_key_first($results); ?><section class="results" aria-live="polite"><div class="results-heading"><div><p class="eyebrow">RESULTADO DA SIMULAÇÃO</p><h2>A rota mais econômica é com <em><?= $labels[$cheapest] ?></em>.</h2></div><p>Para <?= number_format((float)$distanceValue, 1, ',', '.') ?> km</p></div><div class="result-grid"><?php foreach ($results as $fuel => $result): ?><article class="result-card <?= $fuel === $cheapest ? 'winner' : '' ?>"><?php if ($fuel === $cheapest): ?><span class="badge">MENOR CUSTO</span><?php endif; ?><p><?= $labels[$fuel] ?></p><strong><?= money($result['cost']) ?></strong><span><?= number_format($result['liters'], 1, ',', '.') ?> litros estimados</span><small><?= money($prices[$fuel]) ?> / litro</small></article><?php endforeach; ?></div></section><?php endif; ?></main><footer>Rota Certa — projeto de estudo refatorado com foco em cálculos claros.</footer></body></html>

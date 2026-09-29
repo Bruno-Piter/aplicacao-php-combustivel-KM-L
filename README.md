@@ -1,15 +1,26 @@
-# aplicacao-php-combustivel-KM-L
-PHP simples
+# Rota Certa
 
-Formulário para o cálculo do gasto em reais (R$) com o consumo de combustível de um veículo.
+Comparador de custo de viagem por combustível, refatorado a partir de um dos meus primeiros projetos em PHP.
 
-Esta aplicação leva em consideração os seguintes valores para o cálculo:
+## O que mudou
 
-Autonomia do carro (média de litros gastos por quilômetro rodado)
-Distância percorrida
-Valor do combustível
+A versão original aplicava o mesmo consumo em KM/L a todos os combustíveis, o que torna a comparação irreal. Agora você informa a distância e o consumo específico de gasolina, etanol e diesel. O resultado mostra litros estimados, custo por opção e o menor custo total.
 
+## Executar
 
+Requer PHP 8.2 ou superior:
 
-https://github.com/Bruno-Piter/aplicacao-php-combustivel-KM-L/assets/133192036/abb94ad2-9f42-43f7-8d31-4d345c8f1a40
+```bash
+php -S localhost:8000
+```
 
+Depois, abra `http://localhost:8000`.
+
+## Qualidade
+
+- Lógica isolada em `src/FuelCalculator.php`
+- Validação no servidor por campo
+- Teste nativo em `tests/FuelCalculatorTest.php`
+- CI para sintaxe e teste com PHP 8.3
+
+Os preços no código são exemplos e devem ser atualizados conforme a região antes de usar a estimativa para uma decisão real.
